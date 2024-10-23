@@ -1,6 +1,6 @@
 ---
 title: "Practico 1"
-format: pdf
+format: html
 date: "2024-09-16"
 echo: false
 ---
@@ -54,11 +54,11 @@ creators <- office_info |>
   pivot_wider(
     names_from = person,
     values_from = person_value,
-    values_fill = list(person_value = 0)
-  )
+    values_fill = list(person_value = 0))
 ```
 
 ```{r}
+#| output: false
 office <- office_info |> 
   distinct(season, episode_name, imdb_rating) |>
   inner_join(characters) |>
@@ -69,7 +69,8 @@ office <- office_info |>
 ```{r}
 office |>
   ggplot(aes(season, imdb_rating, fill = as.factor(season))) +
-  geom_boxplot(show.legend = FALSE)
+  geom_boxplot(show.legend = FALSE)  +
+  labs(title = "Rating por temporada", x = "Temporada", y = "Rating")
 ```
 
 ```{r}
@@ -118,10 +119,10 @@ lasso_grid |>
   ),
   alpha = 0.5
   ) +
-  geom_line(size = 1.5) +
+  geom_line(linewidth = 1.5) +
   facet_wrap(~.metric, scales = "free", nrow = 2) +
   scale_x_log10() +
-  theme(legend.position = "none")
+  theme(legend.position = "none") + labs(title = "Lasso")
 ```
 
 ```{r}
@@ -150,7 +151,7 @@ final_lasso |>
   ggplot(aes(x = Importance, y = reorder(Variable, Importance), fill = Sign)) +
   geom_col() +
   scale_x_continuous(expand = c(0, 0)) +
-  labs(y = NULL)
+  labs(title = "Importancia de variables en Lasso", x = "Importancia", y = "Variable")
 ```
 ```{r}
 library(ISLR2)
@@ -158,26 +159,90 @@ data(College)
 df = College
 ```
 
+### Estructura de los datos
+
 ```{r}
-df_split = initial_split(df, prop = 0.8, strata = Private)
+df %>% head() %>% kable()
+```
+```{r}
+df_split = initial_split(df, prop = 0.8)
 df_train = training(df_split)
 df_test = testing(df_split)
 ```
-
+## Least Squares
 ```{r}
 lm_mod = linear_reg() %>%
-  set_engine("lm") %>%
-  set_mode("regression")
+  set_engine("lm") 
 ```
 
 ```{r}
 lm_fit = lm_mod %>% fit(Apps ~ ., data = df_train)
 ```
 
+
+
 ```{r}
-least_squares = lm_fit %>% predict(df_test) %>% bind_cols(df_test) %>% 
-  metrics(truth = Apps, estimate = .pred)
+least_squares = bind_rows(
+  lm_fit %>% predict(df_train) %>% bind_cols(df_train) %>% metrics(truth = Apps, estimate = .pred) %>% mutate(.estimate = round(.estimate, 2)) %>% mutate(data = "train"),
+  lm_fit %>% predict(df_test) %>% bind_cols(df_test) %>% metrics(truth = Apps, estimate = .pred) %>% mutate(.estimate = round(.estimate, 2)) %>% mutate(data = "test")) %>% 
+  pivot_wider(names_from = data, values_from = .estimate)
 ```
+
+  
+### Importancia de variables
+```{r}
+lm_fit %>% 
+  extract_fit_engine()  %>% 
+  vip(num_features = 10 , geom = "col", aesthetics = list(fill = "skyblue" , color = "black"))
+```
+
+### Errores
+```{r}
+least_squares %>% kable()
+```
+## Ridge con penanlidad 0 
+
+```{r}
+df_rec <- recipe(Apps ~ ., data = df_train) |>
+   step_dummy(Private) |> 
+  step_normalize(all_numeric(), -all_outcomes()) 
+```
+
+```{r}
+tune_spec <- linear_reg(penalty = 0, mixture = 0)  %>%  
+  set_engine("lm") 
+```
+
+```{r}
+tune_wf <- workflow() |>
+  add_recipe(df_rec) |>
+  add_model(tune_spec)
+```
+
+```{r}
+ridge_fit <- tune_wf %>% fit(df_train)
+```
+
+
+```{r}
+ridge = bind_rows(
+  ridge_fit %>% predict(df_train) %>% bind_cols(df_train) %>% metrics(truth = Apps, estimate = .pred) %>% mutate(.estimate = round(.estimate, 2)) %>% mutate(data = "train"),
+  ridge_fit %>% predict(df_test) %>% bind_cols(df_test) %>% metrics(truth = Apps, estimate = .pred) %>% mutate(.estimate = round(.estimate, 2)) %>% mutate(data = "test")) %>% 
+  pivot_wider(names_from = data, values_from = .estimate)
+```
+### Importancia de variables
+
+```{r}
+ridge_fit %>% 
+  extract_fit_engine()  %>% 
+  vip(num_features = 10 , geom = "col", aesthetics = list(fill = "skyblue" , color = "black"))
+```
+
+### Errores
+```{r}
+ridge  %>% kable()
+```
+
 
 ## Ridge
 
@@ -208,10 +273,6 @@ ridge_grid <- tune_grid(
 ```
 
 ```{r}
-ridge_grid %>% collect_metrics()
-```
-
-```{r}
 ridge_grid |>
   collect_metrics() |>
   ggplot(aes(penalty, mean, color = .metric)) +
@@ -221,26 +282,43 @@ ridge_grid |>
   ),
   alpha = 0.5
   ) +
-  geom_line(size = 1.5) +
+  geom_line(linewidth = 1.5) +
   facet_wrap(~.metric, scales = "free", nrow = 2) +
   scale_x_log10() +
   theme(legend.position = "none")
 ```
+### Lambda Optimo
 ```{r}
-ridge_grid %>% select_best(metric = "rmse")
+ridge_grid %>% select_best(metric = "rmse") %>% kable()
 ```
 
 ```{r}
 ridge_final <- finalize_workflow(tune_wf, ridge_grid %>% select_best(metric = "rmse"))
 ```
 
+### Importancia de variables
+
 ```{r}
-ridge = ridge_final %>% fit(df_train) %>% predict(df_test) %>% bind_cols(df_test) %>% 
-  metrics(truth = Apps, estimate = .pred)
+ridge_final %>% 
+  fit(df_train) %>% 
+  extract_fit_engine()  %>% 
+  vip(num_features = 10 , geom = "col", aesthetics = list(fill = "skyblue" , color = "black"))
+```
+
+```{r}
+ridge = bind_rows(
+  ridge_final %>% fit(df_train) %>% predict(df_train) %>% bind_cols(df_train) %>% 
+  metrics(truth = Apps, estimate = .pred) %>% mutate(.estimate = round(.estimate, 2)) %>% mutate(data = "train"),
+  ridge_final %>% fit(df_train) %>% predict(df_test) %>% bind_cols(df_test) %>% 
+  metrics(truth = Apps, estimate = .pred) %>% mutate(.estimate = round(.estimate, 2)) %>% mutate(data = "test")) %>% 
+  pivot_wider(names_from = data, values_from = .estimate)
+```
+### Errores
+```{r}
+ridge %>% kable()
 ```
 
 ## Lasso
-
 ```{r}
 tune_spec <- linear_reg(penalty = tune(), mixture = 1)  %>%  
   set_engine("glmnet") 
@@ -258,13 +336,9 @@ lambda_grid <- grid_regular(penalty(c(-5 , 3) ),  levels = 100)
 lasso_grid <- tune_grid(
   tune_wf,
   resamples = df_cv,
-  grid = lambda_grid
-)
+  grid = lambda_grid)
 ```
 
-```{r}
-lasso_grid %>% collect_metrics()
-```
 
 ```{r}
 lasso_grid |>
@@ -276,21 +350,46 @@ lasso_grid |>
   ),
   alpha = 0.5
   ) +
-  geom_line(size = 1.5) +
+  geom_line(linewidth = 1.5) +
   facet_wrap(~.metric, scales = "free", nrow = 2) +
   scale_x_log10() +
   theme(legend.position = "none")
 ```
-
+### Lambda Optimo
 ```{r}
-lasso_grid %>% select_best(metric = "rmse")
-lasso_final <- finalize_workflow(tune_wf, lasso_grid %>% select_best(metric = "rmse"))
-
+lasso_grid %>% select_best(metric = "rmse") %>% kable()
+```
+### Autoplot de importancia variables
+```{r}
+lasso_grid %>% autoplot()
 ```
 
 ```{r}
-lasso = lasso_final %>% fit(df_train) %>% predict(df_test) %>% bind_cols(df_test) %>% 
-  metrics(truth = Apps, estimate = .pred)
+lasso_final <- finalize_workflow(tune_wf, lasso_grid %>% select_best(metric = "rmse"))
+```
+
+### Importancia de variables
+
+```{r}
+lasso_final %>% 
+  fit(df_train) %>% 
+  extract_fit_engine()  %>% 
+  vip(num_features = 10 , geom = "col", aesthetics = list(fill = "skyblue" , color = "black"))
+```
+
+
+```{r}
+lasso = bind_rows(
+  lasso_final %>% fit(df_train) %>% predict(df_train) %>% bind_cols(df_train) %>% 
+  metrics(truth = Apps, estimate = .pred) %>% mutate(.estimate = round(.estimate, 2)) %>% mutate(data = "train"),
+  lasso_final %>% fit(df_train) %>% predict(df_test) %>% bind_cols(df_test) %>% 
+  metrics(truth = Apps, estimate = .pred) %>% mutate(.estimate = round(.estimate, 2)) %>% mutate(data = "test")) %>% 
+  pivot_wider(names_from = data, values_from = .estimate)
+```
+
+### Error 
+```{r}
+lasso %>% kable()
 ```
 
 ## KNN 
@@ -338,13 +437,13 @@ knn_grid |>
   ),
   alpha = 0.5
   ) +
-  geom_line(size = 1.5) +
+  geom_line(linewidth = 1.5) +
   facet_wrap(~.metric, scales = "free", nrow = 2) +
   theme(legend.position = "none")
 ```
-
+### Cantidad optima de vecinos
 ```{r}
-knn_grid %>% select_best(metric = "rmse")
+knn_grid %>% select_best(metric = "rmse") %>% kable(caption = "Cantidad oprima de vecinos")
 ```
 
 ```{r}
@@ -352,22 +451,48 @@ knn_final <- finalize_workflow(tune_wf, knn_grid %>% select_best(metric = "rmse"
 ```
 
 ```{r}
- knn = knn_final %>% fit(df_train) %>% predict(df_test) %>% bind_cols(df_test) %>% 
-  metrics(truth = Apps, estimate = .pred)
+ knn = bind_rows(
+  knn_final %>% fit(df_train) %>% predict(df_train) %>% bind_cols(df_train) %>% 
+  metrics(truth = Apps, estimate = .pred) %>% mutate(.estimate = round(.estimate, 2)) %>% mutate(data = "train"),
+  knn_final %>% fit(df_train) %>% predict(df_test) %>% bind_cols(df_test) %>% 
+  metrics(truth = Apps, estimate = .pred) %>% mutate(.estimate = round(.estimate, 2)) %>% mutate(data = "test")) %>% 
+  pivot_wider(names_from = data, values_from = .estimate)
 ```
+
+### Error de testeo
+```{r}
+knn %>% kable()
+```
+
 
 
 ## Comparación de modelos
 
 ```{r}
-models <- bind_rows(
-  least_squares %>% mutate(model = "Least Squares") ,
+bind_rows(
+  least_squares %>% mutate(model = "Least Squares"),
   ridge %>% mutate(model = "Ridge"),
   lasso %>% mutate(model = "Lasso"),
   knn %>% mutate(model = "KNN")
-) %>% filter(.metric == "rmse")
-models %>% kable()
+) %>% ggplot(aes(x = fct_reorder(model, test , .desc = TRUE), y = test , fill = model)) +
+  geom_col(position = "dodge") +
+  labs(title = "Comparación de modelos", x = "Modelo", y = "RMSE") + 
+  coord_flip() 
 ```
+
+```{r}
+```
+
+```{r}
+
+
+```{r}
+
+```
+
+```{r}
+```
+
 
 
 

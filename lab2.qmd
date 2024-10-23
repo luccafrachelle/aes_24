@@ -1,0 +1,312 @@
+---
+title: "Lab2"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(ISLR)
+```
+
+# Intro
+```{r}
+Wage <- as_tibble(Wage)
+glimpse(Wage)
+```
+```{r}
+set.seed(123)
+
+data_split <- rsample::initial_split(Wage, prop = 3/4)
+
+train_data <- rsample::training(data_split)
+test_data  <- rsample::testing(data_split)
+```
+
+```{r}
+rec_poly <- recipes::recipe(wage ~ age, data = train_data) %>%
+            recipes::step_poly(age, degree = 4, options = list(raw = TRUE))
+```
+
+```{r}
+lm_spec <- parsnip::linear_reg() %>%
+           parsnip::set_mode("regression") %>% 
+           parsnip::set_engine("lm")
+```
+
+
+```{r}
+poly_wf <- workflows::workflow() %>%
+   workflows::add_model(lm_spec) %>%
+  workflows::add_recipe(rec_poly)
+```
+
+```{r}
+poly_fit <- parsnip:: fit(poly_wf, data = train_data)
+poly_fit
+
+```
+
+```{r}
+tidy(poly_fit)
+```
+
+```{r}
+age_range <- tibble(age = seq(min(Wage$age), max(Wage$age)))
+
+regression_lines <- bind_cols(
+  augment(poly_fit, new_data = age_range),
+  predict(poly_fit, new_data = age_range, type = "conf_int")
+)
+regression_lines
+```
+
+
+```{r}
+Wage %>%
+  ggplot(aes(age, wage)) +
+  geom_point(alpha = 0.2) +
+  geom_line(aes(y = .pred), color = "darkgreen",
+            data = regression_lines) +
+  geom_line(aes(y = .pred_lower), data = regression_lines,
+            linetype = "dashed", color = "blue") +
+  geom_line(aes(y = .pred_upper), data = regression_lines,
+            linetype = "dashed", color = "blue")
+```
+## Tu turno 1
+```{r}
+lm_ploy = lm(wage ~ poly(age, 4, raw = TRUE), data = train_data)
+```
+
+```{r}
+summary(lm_ploy)
+```
+
+```{r}
+age_range <- tibble(age = seq(min(Wage$age), max(Wage$age)))
+```
+
+
+
+```{r}
+train_data %>% mutate(ploy_2 = age^2, ploy_3 = age^3, ploy_4 = age^4) %>%
+  lm(wage ~ age + ploy_2 + ploy_3 + ploy_4, data = .) %>%
+  summary()
+```
+
+## Tu turno 2
+
+```{r}
+rec_poly <- recipes::recipe(wage ~ age, data = train_data) %>%
+            recipes::step_poly(age, degree = 4)
+```
+
+```{r}
+lm_spec <- parsnip::set_mode("regression") %>% 
+           parsnip::set_engine("mgcv")
+```
+
+
+```{r}
+poly_wf <- workflows::workflow() %>%
+   workflows::add_model(lm_spec) %>%
+  workflows::add_recipe(rec_poly)
+```
+
+```{r}
+poly_fit <- parsnip:: fit(poly_wf, data = train_data)
+poly_fit
+```
+
+```{r}
+tidy(poly_fit)
+```
+
+```{r}
+age_range <- tibble(age = seq(min(Wage$age), max(Wage$age)))
+
+regression_lines <- bind_cols(
+  augment(poly_fit, new_data = age_range),
+  predict(poly_fit, new_data = age_range, type = "conf_int")
+)
+regression_lines
+```
+
+```{r}
+Wage %>%
+  ggplot(aes(age, wage)) +
+  geom_point(alpha = 0.2) +
+  geom_line(aes(y = .pred), color = "darkgreen",
+            data = regression_lines) +
+  geom_line(aes(y = .pred_lower), data = regression_lines,
+            linetype = "dashed", color = "blue") +
+  geom_line(aes(y = .pred_upper), data = regression_lines,
+            linetype = "dashed", color = "blue")
+
+```
+
+## Tu turno 3
+
+```{r}
+rec_spline <- recipes::recipe(wage ~ age, data = train_data) %>%
+            recipes::step_bs(age, deg_free = 4 , options = list(knots = c(25, 40, 60)))
+```
+
+```{r}
+spline_wf <- workflows::workflow() %>%
+   workflows::add_model(lm_spec) %>%
+  workflows::add_recipe(rec_spline)
+```
+
+```{r}
+spline_fit <- parsnip:: fit(spline_wf, data = train_data)
+```
+
+
+```{r}
+tidy(spline_fit)
+```
+
+```{r}
+
+predict(spline_fit, new_data = test_data)
+```
+
+
+
+```{r}
+preds <- bind_cols(
+  augment(poly_fit, new_data = test_data),
+  predict(poly_fit, new_data = test_data, type = "conf_int")
+)
+```
+
+
+
+
+```{r}
+age_range <- tibble(age = c(18:80))
+regression_lines <- bind_cols(
+  augment(spline_fit, new_data = age_range),
+  predict(spline_fit, new_data = age_range, type = "conf_int")
+)
+```
+
+```{r}
+Wage %>%
+  ggplot(aes(age, wage)) +
+  geom_point(alpha = 0.2) +
+  geom_line(aes(y = .pred), color = "darkgreen",
+            data = regression_lines) +
+  geom_line(aes(y = .pred_lower), data = regression_lines,
+            linetype = "dashed", color = "blue") +
+  geom_line(aes(y = .pred_upper), data = regression_lines,
+            linetype = "dashed", color = "blue")
+```
+
+## Tu turno 4
+
+```{r}
+rec_spline <- recipes::recipe(wage ~ age, data = train_data) %>%
+            recipes::step_ns(age, deg_free = 4 ,options = list(25, 40, 60))
+```
+
+```{r}
+spline_wf <- workflows::workflow() %>%
+   workflows::add_model(lm_spec) %>%
+  workflows::add_recipe(rec_spline)
+```
+
+```{r}
+spline_fit <- parsnip:: fit(spline_wf, data = train_data)
+```
+
+```{r}
+tidy(spline_fit)
+```
+
+```{r}
+predict(spline_fit, new_data = test_data)
+```
+
+```{r}
+preds <- bind_cols(
+  augment(poly_fit, new_data = test_data),
+  predict(poly_fit, new_data = test_data, type = "conf_int")
+)
+
+```
+
+
+```{r}
+age_range <- tibble(age = c(18:80))
+regression_lines <- bind_cols(
+  augment(spline_fit, new_data = age_range),
+  predict(spline_fit, new_data = age_range, type = "conf_int"))
+```
+
+```{r}
+Wage %>%
+  ggplot(aes(age, wage)) +
+  geom_point(alpha = 0.2) +
+  geom_line(aes(y = .pred), color = "darkgreen",
+            data = regression_lines) +
+  geom_line(aes(y = .pred_lower), data = regression_lines,
+            linetype = "dashed", color = "blue") +
+  geom_line(aes(y = .pred_upper), data = regression_lines,
+            linetype = "dashed", color = "blue")
+
+```
+## Tu turno 5
+
+
+```{r}
+rec_gams <- recipes::recipe(wage ~ age + year + education, data = train_data) %>%
+            recipes::step_ns(age, deg_free = 5) %>%
+            recipes::step_ns(year, deg_free = 4 )
+```
+
+```{r}
+gams_wf = workflows::workflow() %>%
+   workflows::add_model(lm_spec) %>%
+  workflows::add_recipe(rec_gams)
+```
+
+```{r}
+gams_fit <- parsnip:: fit(gams_wf, data = train_data)
+```
+
+```{r}
+tidy(gams_fit)
+```
+
+
+```{r}
+regression_lines <- bind_cols(
+  augment(gams_fit, new_data = test_data),
+  predict(gams_fit, new_data = test_data, type = "conf_int"))
+```
+
+
+```{r}
+gam_fit <-  parsnip::gen_additive_mod() %>%
+           parsnip::set_engine("mgcv")  %>% 
+            parsnip::set_mode("regression") %>% 
+              fit(wage ~ age + year + education, data = train_data) 
+```
+
+```{r}
+library(gratia)
+```
+
+
+
+```{r}
+draw(gam_fit)
+
+```
+
+
+
+
