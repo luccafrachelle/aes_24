@@ -128,36 +128,88 @@ window.Quarto = {
 <section id="ejercicio-1" class="level1">
 <h1>Ejercicio 1</h1>
 <section id="parte-1-argumentar-que-el-error-esperado-de-validación-es-el-mismo-para-m-observaciones-o-solo-1" class="level2">
-<h2 class="anchored" data-anchor-id="parte-1-argumentar-que-el-error-esperado-de-validación-es-el-mismo-para-m-observaciones-o-solo-1">Parte 1: Argumentar que el error esperado de validación es el mismo para m observaciones o solo 1</h2>
-<p>Demostramos que el error esperado para m observaciones es equivalente al error esperado para una observación usando la regla de esperanzas iteradas.</p>
-<p>Ecuación de error esperado de validación <span class="math display">\[
-E\left[ \frac{1}{m} \sum_{i=1}^{m} (y'_i - \hat{\beta}^T x'_i)^2 \right] = E[(y'_1 - \hat{\beta}^T x'_1)^2]
+<h2 class="anchored" data-anchor-id="parte-1-argumentar-que-el-error-esperado-de-validación-es-el-mismo-para-m-observaciones-o-solo-1">Parte 1: Argumentar que el error esperado de validación es el mismo para <span class="math inline">\(m\)</span> observaciones o solo 1</h2>
+<p>Demostramos que el error esperado para <span class="math inline">\(m\)</span> observaciones es equivalente al error esperado para una observación usando la <strong>regla de esperanzas iteradas</strong>.</p>
+<p>Ecuación de error esperado de validación: <span class="math display">\[
+E\left[ \frac{1}{m} \sum_{i=1}^{m} (y'_i - \hat{\beta}^\top x'_i)^2 \right] = E\left[ (y'_1 - \hat{\beta}^\top x'_1)^2 \right]
 \]</span></p>
-<p>Aquí utilizamos la regla de esperanzas iteradas: <span class="math display">\[
-E(Z) = E_t[E_v(Z | t)]
-\]</span> Donde <span class="math inline">\(E_t\)</span> considera la aleatoriedad en la muestra de entrenamiento y <span class="math inline">\(E_v\)</span> en la de validación.</p>
+<p>Aquí utilizamos la <strong>regla de esperanzas iteradas</strong>: <span class="math display">\[
+E(Z) = E_t\left[ E_v(Z \mid t) \right]
+\]</span> donde <span class="math inline">\(E_t\)</span> considera la aleatoriedad en la muestra de entrenamiento y <span class="math inline">\(E_v\)</span> en la de validación.</p>
+<p><strong>Demostración:</strong></p>
+<p>Dado que las observaciones del conjunto de validación <span class="math inline">\(\{(x'_i, y'_i)\}\)</span> son independientes e idénticamente distribuidas (i.i.d.), y que <span class="math inline">\(\hat{\beta}\)</span> está fijo dado el conjunto de entrenamiento, podemos escribir:</p>
+<ol type="1">
+<li><p>Calculamos el valor esperado del error de validación promedio: <span class="math display">\[
+E\left[ \frac{1}{m} \sum_{i=1}^{m} (y'_i - \hat{\beta}^\top x'_i)^2 \right] = \frac{1}{m} \sum_{i=1}^{m} E\left[ (y'_i - \hat{\beta}^\top x'_i)^2 \right]
+\]</span></p></li>
+<li><p>Debido a la independencia y misma distribución de las observaciones, todos los términos en la suma son iguales: <span class="math display">\[
+E\left[ (y'_i - \hat{\beta}^\top x'_i)^2 \right] = E\left[ (y'_1 - \hat{\beta}^\top x'_1)^2 \right], \quad \forall i
+\]</span></p></li>
+<li><p>Entonces, la suma se simplifica: <span class="math display">\[
+\frac{1}{m} \sum_{i=1}^{m} E\left[ (y'_1 - \hat{\beta}^\top x'_1)^2 \right] = E\left[ (y'_1 - \hat{\beta}^\top x'_1)^2 \right]
+\]</span></p></li>
+</ol>
+<p>Por lo tanto, el error esperado de validación para <span class="math inline">\(m\)</span> observaciones es igual al error esperado para una sola observación.</p>
 </section>
 <section id="parte-2-definición-de-las-variables-aleatorias-a-y-b" class="level2">
-<h2 class="anchored" data-anchor-id="parte-2-definición-de-las-variables-aleatorias-a-y-b">Parte 2: Definición de las variables aleatorias A y B</h2>
-<p>Definimos las variables A y B como: <span class="math display">\[
-A = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{\beta}^T x_i)^2
+<h2 class="anchored" data-anchor-id="parte-2-definición-de-las-variables-aleatorias-a-y-b">Parte 2: Definición de las variables aleatorias <span class="math inline">\(A\)</span> y <span class="math inline">\(B\)</span></h2>
+<p>Definimos las variables <span class="math inline">\(A\)</span> y <span class="math inline">\(B\)</span> como: <span class="math display">\[
+A = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{\beta}^\top x_i)^2
 \]</span> <span class="math display">\[
-B = \frac{1}{n} \sum_{i=1}^{n} (y'_i - \tilde{\beta}^T x'_i)^2
+B = \frac{1}{n} \sum_{i=1}^{n} (y'_i - \tilde{\beta}^\top x'_i)^2
 \]</span></p>
-<p>Argumentamos que (A) y (B) tienen la misma distribución, por lo tanto (E(A) = E(B)).</p>
+<p>Argumentamos que <span class="math inline">\(A\)</span> y <span class="math inline">\(B\)</span> tienen la misma distribución, por lo tanto <span class="math inline">\(E(A) = E(B)\)</span>.</p>
+<p><strong>Demostración:</strong></p>
+<ol type="1">
+<li><p>Ambos conjuntos de datos <span class="math inline">\(\{(x_i, y_i)\}\)</span> y <span class="math inline">\(\{(x'_i, y'_i)\}\)</span> son muestras independientes del mismo proceso generador de datos.</p></li>
+<li><p>Los estimadores <span class="math inline">\(\hat{\beta}\)</span> y <span class="math inline">\(\tilde{\beta}\)</span> se obtienen ajustando el mismo modelo (por ejemplo, regresión lineal) a sus respectivos conjuntos de datos.</p></li>
+<li><p>Debido a la simetría en el proceso y a que los datos son i.i.d., las distribuciones de <span class="math inline">\(A\)</span> y <span class="math inline">\(B\)</span> son idénticas.</p></li>
+<li><p>Por lo tanto: <span class="math display">\[
+E(A) = E(B)
+\]</span></p></li>
+</ol>
 </section>
-</section>
-<section id="parte-3-relación-entre-b-y-el-error-de-validación" class="level1">
-<h1>Parte 3: Relación entre B y el error de validación</h1>
-<p>Demostramos que (B) es siempre menor o igual al error de validación utilizando la desigualdad: <span class="math display">\[
-B = \frac{1}{n} \sum_{i=1}^{n} (y'_i - \tilde{\beta}^T x'_i)^2 \leq \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^T x'_i)^2
+<section id="parte-3-relación-entre-b-y-el-error-de-validación" class="level2">
+<h2 class="anchored" data-anchor-id="parte-3-relación-entre-b-y-el-error-de-validación">Parte 3: Relación entre <span class="math inline">\(B\)</span> y el error de validación</h2>
+<p>Demostramos que <span class="math inline">\(B\)</span> es siempre menor o igual al error de validación utilizando la desigualdad: <span class="math display">\[
+B = \frac{1}{n} \sum_{i=1}^{n} (y'_i - \tilde{\beta}^\top x'_i)^2 \leq \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2
 \]</span></p>
+<p><strong>Demostración:</strong></p>
+<ol type="1">
+<li><p>El estimador <span class="math inline">\(\tilde{\beta}\)</span> se obtiene minimizando el error cuadrático en el conjunto de validación: <span class="math display">\[
+\tilde{\beta} = \arg\min_{\beta} \frac{1}{n} \sum_{i=1}^{n} (y'_i - \beta^\top x'_i)^2
+\]</span></p></li>
+<li><p>Por definición de mínimo, tenemos: <span class="math display">\[
+\frac{1}{n} \sum_{i=1}^{n} (y'_i - \tilde{\beta}^\top x'_i)^2 \leq \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2
+\]</span></p></li>
+<li><p>Por lo tanto: <span class="math display">\[
+B \leq \text{Error de validación con } \hat{\beta}
+\]</span></p></li>
+</ol>
 </section>
-<section id="parte-4-conclusión" class="level1">
-<h1>Parte 4: Conclusión</h1>
+<section id="parte-4-conclusión" class="level2">
+<h2 class="anchored" data-anchor-id="parte-4-conclusión">Parte 4: Conclusión</h2>
 <p>Usando el resultado anterior, concluimos que el error de entrenamiento es siempre menor o igual al error de validación: <span class="math display">\[
-E\left[ \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{\beta}^T x_i)^2 \right] \leq E\left[ \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^T x'_i)^2 \right]
+E\left[ \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{\beta}^\top x_i)^2 \right] \leq E\left[ \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2 \right]
 \]</span></p>
+<p><strong>Demostración:</strong></p>
+<ol type="1">
+<li><p>De la <strong>Parte 2</strong>, sabemos que <span class="math inline">\(E(A) = E(B)\)</span>.</p></li>
+<li><p>De la <strong>Parte 3</strong>, tenemos que: <span class="math display">\[
+B \leq \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2
+\]</span></p></li>
+<li><p>Tomando el valor esperado en ambos lados: <span class="math display">\[
+E(B) \leq E\left[ \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2 \right]
+\]</span></p></li>
+<li><p>Sustituyendo <span class="math inline">\(E(A)\)</span> por <span class="math inline">\(E(B)\)</span>: <span class="math display">\[
+E(A) \leq E\left[ \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2 \right]
+\]</span></p></li>
+<li><p>Es decir: <span class="math display">\[
+E\left[ \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{\beta}^\top x_i)^2 \right] \leq E\left[ \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2 \right]
+\]</span></p></li>
+</ol>
+<p>Esto demuestra que, en promedio, el error de entrenamiento es menor o igual al error de validación, lo cual es coherente con el hecho de que el modelo está ajustado para minimizar el error en el conjunto de entrenamiento y puede no generalizar perfectamente al conjunto de validación.</p>
+</section>
 </section>
 <section id="ejercicio-2" class="level1">
 <h1>Ejercicio 2</h1>
@@ -439,9 +491,6 @@ MSE_{CV} = \frac{1}{5} \sum_{i=1}^{5} MSE_i
 <section id="ejercicio-1-1" class="level2">
 <h2 class="anchored" data-anchor-id="ejercicio-1-1">Ejercicio 1</h2>
 </section>
-</section>
-<section id="ejercicio-1-cubic-regression-spline" class="level1">
-<h1>Ejercicio 1: Cubic Regression Spline</h1>
 <section id="a-encontrar-un-polinomio-cúbico-f_1x" class="level2">
 <h2 class="anchored" data-anchor-id="a-encontrar-un-polinomio-cúbico-f_1x">(a) Encontrar un polinomio cúbico <span class="math inline">\(f_1(x)\)</span></h2>
 <p>Cuando <span class="math inline">\(x \leq \xi\)</span>, el término <span class="math inline">\((x - \xi)^3_+\)</span> es igual a cero, por lo que la función <span class="math inline">\(f(x)\)</span> se reduce a:</p>

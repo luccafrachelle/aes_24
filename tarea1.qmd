@@ -8,39 +8,105 @@ execute:
 
 # Ejercicio 1
 
-## Parte 1: Argumentar que el error esperado de validación es el mismo para m observaciones o solo 1
+## Parte 1: Argumentar que el error esperado de validación es el mismo para $m$ observaciones o solo 1
 
-Demostramos que el error esperado para m observaciones es equivalente al error esperado para una observación usando la regla de esperanzas iteradas.
+Demostramos que el error esperado para $m$ observaciones es equivalente al error esperado para una observación usando la **regla de esperanzas iteradas**.
 
-Ecuación de error esperado de validación $$
-E\left[ \frac{1}{m} \sum_{i=1}^{m} (y'_i - \hat{\beta}^T x'_i)^2 \right] = E[(y'_1 - \hat{\beta}^T x'_1)^2]
+Ecuación de error esperado de validación: $$
+E\left[ \frac{1}{m} \sum_{i=1}^{m} (y'_i - \hat{\beta}^\top x'_i)^2 \right] = E\left[ (y'_1 - \hat{\beta}^\top x'_1)^2 \right]
 $$
 
-Aquí utilizamos la regla de esperanzas iteradas: $$
-E(Z) = E_t[E_v(Z | t)]
-$$ Donde $E_t$ considera la aleatoriedad en la muestra de entrenamiento y $E_v$ en la de validación.
+Aquí utilizamos la **regla de esperanzas iteradas**: $$
+E(Z) = E_t\left[ E_v(Z \mid t) \right]
+$$ donde $E_t$ considera la aleatoriedad en la muestra de entrenamiento y $E_v$ en la de validación.
 
-## Parte 2: Definición de las variables aleatorias A y B
+**Demostración:**
 
-Definimos las variables A y B como: $$
-A = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{\beta}^T x_i)^2
+Dado que las observaciones del conjunto de validación $\{(x'_i, y'_i)\}$ son independientes e idénticamente distribuidas (i.i.d.), y que $\hat{\beta}$ está fijo dado el conjunto de entrenamiento, podemos escribir:
+
+1.  Calculamos el valor esperado del error de validación promedio: $$
+    E\left[ \frac{1}{m} \sum_{i=1}^{m} (y'_i - \hat{\beta}^\top x'_i)^2 \right] = \frac{1}{m} \sum_{i=1}^{m} E\left[ (y'_i - \hat{\beta}^\top x'_i)^2 \right]
+    $$
+
+2.  Debido a la independencia y misma distribución de las observaciones, todos los términos en la suma son iguales: $$
+    E\left[ (y'_i - \hat{\beta}^\top x'_i)^2 \right] = E\left[ (y'_1 - \hat{\beta}^\top x'_1)^2 \right], \quad \forall i
+    $$
+
+3.  Entonces, la suma se simplifica: $$
+    \frac{1}{m} \sum_{i=1}^{m} E\left[ (y'_1 - \hat{\beta}^\top x'_1)^2 \right] = E\left[ (y'_1 - \hat{\beta}^\top x'_1)^2 \right]
+    $$
+
+Por lo tanto, el error esperado de validación para $m$ observaciones es igual al error esperado para una sola observación.
+
+## Parte 2: Definición de las variables aleatorias $A$ y $B$
+
+Definimos las variables $A$ y $B$ como: $$
+A = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{\beta}^\top x_i)^2
 $$ $$
-B = \frac{1}{n} \sum_{i=1}^{n} (y'_i - \tilde{\beta}^T x'_i)^2
+B = \frac{1}{n} \sum_{i=1}^{n} (y'_i - \tilde{\beta}^\top x'_i)^2
 $$
 
-Argumentamos que (A) y (B) tienen la misma distribución, por lo tanto (E(A) = E(B)).
+Argumentamos que $A$ y $B$ tienen la misma distribución, por lo tanto $E(A) = E(B)$.
 
-# Parte 3: Relación entre B y el error de validación
+**Demostración:**
 
-Demostramos que (B) es siempre menor o igual al error de validación utilizando la desigualdad: $$
-B = \frac{1}{n} \sum_{i=1}^{n} (y'_i - \tilde{\beta}^T x'_i)^2 \leq \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^T x'_i)^2
+1.  Ambos conjuntos de datos $\{(x_i, y_i)\}$ y $\{(x'_i, y'_i)\}$ son muestras independientes del mismo proceso generador de datos.
+
+2.  Los estimadores $\hat{\beta}$ y $\tilde{\beta}$ se obtienen ajustando el mismo modelo (por ejemplo, regresión lineal) a sus respectivos conjuntos de datos.
+
+3.  Debido a la simetría en el proceso y a que los datos son i.i.d., las distribuciones de $A$ y $B$ son idénticas.
+
+4.  Por lo tanto: $$
+    E(A) = E(B)
+    $$
+
+## Parte 3: Relación entre $B$ y el error de validación
+
+Demostramos que $B$ es siempre menor o igual al error de validación utilizando la desigualdad: $$
+B = \frac{1}{n} \sum_{i=1}^{n} (y'_i - \tilde{\beta}^\top x'_i)^2 \leq \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2
 $$
 
-# Parte 4: Conclusión
+**Demostración:**
+
+1.  El estimador $\tilde{\beta}$ se obtiene minimizando el error cuadrático en el conjunto de validación: $$
+    \tilde{\beta} = \arg\min_{\beta} \frac{1}{n} \sum_{i=1}^{n} (y'_i - \beta^\top x'_i)^2
+    $$
+
+2.  Por definición de mínimo, tenemos: $$
+    \frac{1}{n} \sum_{i=1}^{n} (y'_i - \tilde{\beta}^\top x'_i)^2 \leq \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2
+    $$
+
+3.  Por lo tanto: $$
+    B \leq \text{Error de validación con } \hat{\beta}
+    $$
+
+## Parte 4: Conclusión
 
 Usando el resultado anterior, concluimos que el error de entrenamiento es siempre menor o igual al error de validación: $$
-E\left[ \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{\beta}^T x_i)^2 \right] \leq E\left[ \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^T x'_i)^2 \right]
+E\left[ \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{\beta}^\top x_i)^2 \right] \leq E\left[ \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2 \right]
 $$
+
+**Demostración:**
+
+1.  De la **Parte 2**, sabemos que $E(A) = E(B)$.
+
+2.  De la **Parte 3**, tenemos que: $$
+    B \leq \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2
+    $$
+
+3.  Tomando el valor esperado en ambos lados: $$
+    E(B) \leq E\left[ \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2 \right]
+    $$
+
+4.  Sustituyendo $E(A)$ por $E(B)$: $$
+    E(A) \leq E\left[ \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2 \right]
+    $$
+
+5.  Es decir: $$
+    E\left[ \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{\beta}^\top x_i)^2 \right] \leq E\left[ \frac{1}{n} \sum_{i=1}^{n} (y'_i - \hat{\beta}^\top x'_i)^2 \right]
+    $$
+
+Esto demuestra que, en promedio, el error de entrenamiento es menor o igual al error de validación, lo cual es coherente con el hecho de que el modelo está ajustado para minimizar el error en el conjunto de entrenamiento y puede no generalizar perfectamente al conjunto de validación.
 
 # Ejercicio 2
 
@@ -351,8 +417,6 @@ errors
 # Ejercico 8
 
 ## Ejercicio 1
-
-# Ejercicio 1: Cubic Regression Spline
 
 ## (a) Encontrar un polinomio cúbico $f_1(x)$
 
@@ -1011,4 +1075,7 @@ test_predictions <- predict(final_fit, new_data = test_data) %>%
   bind_cols(test_data)
 
 metrics(test_predictions, truth = Outstate, estimate = .pred) %>% kable()
+```
+
+```{r}
 ```
