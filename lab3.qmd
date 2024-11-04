@@ -1,0 +1,358 @@
+
+---
+title: "Lab 3"
+format: html
+---
+
+```{r}
+#| echo: false
+#| output: false
+library(tidyverse)
+library(tidymodels)
+library(ISLR2)
+library(discrim)
+library(knitr)
+```
+
+
+
+```{r}
+data(Auto)
+df <- Auto  %>% 
+  mutate(alto_consumo = ifelse(mpg > median(mpg), 1, 0)) %>% 
+  mutate(alto_consumo = factor(alto_consumo, levels=c(1,0)), 
+         cylinders = factor(cylinders),
+         origin = factor(origin, levels = 1:3, 
+                         labels = c("Americano", "Europeo", "Japones")))
+```
+
+
+```{r}
+df  %>% 
+  select(-name, -origin, -mpg, -cylinders) %>% 
+  pivot_longer(-alto_consumo, names_to = "var", values_to = "val") %>% 
+  ggplot(aes(y = alto_consumo, x = val)) +
+  geom_boxplot(aes(fill = factor(alto_consumo))) +
+  facet_wrap(~var, scales = "free_x") +
+  theme(legend.position = "none")  +
+  xlab("valor de la variable")
+```
+
+
+```{r}
+df  %>% 
+  select(origin, cylinders, alto_consumo) %>% 
+  pivot_longer(-alto_consumo, names_to = "var", values_to = "val") %>% 
+  ggplot(aes(x = val, fill = alto_consumo)) +
+  geom_bar(position = position_dodge()) +
+  facet_wrap(~var, scales = "free_x") +
+  theme(legend.position = "none")  +
+  xlab("valor de la variable") +
+  labs(y = "Cantidad")
+```
+
+
+```{r}
+df <- df  %>% 
+  select(-c(mpg, name))
+```
+
+
+```{r}
+set.seed(1234)
+df_split <- initial_split(df, prop = 3 / 4, strata = alto_consumo) 
+df_train <- training(df_split)
+df_test <- testing(df_split)
+```
+
+
+```{r}
+df_recipe <- recipe(
+  alto_consumo ~ .,
+  data = df_train) %>% 
+  step_dummy(origin, cylinders)
+```
+
+## LDA
+```{r}
+lda_spec <- discrim_linear(
+              mode = "classification"
+            ) %>%  
+            set_engine('MASS')
+
+lda_workflow <- workflow() %>% 
+  add_recipe(df_recipe) %>% 
+  add_model(lda_spec)
+
+lda_model <- lda_workflow %>% 
+  fit(df_train)
+```
+
+## Regresión logística
+
+```{r}
+reglog_spec <- logistic_reg() %>%  
+                set_engine('glm')
+
+reglog_workflow <- workflow() %>% 
+  add_recipe(df_recipe) %>% 
+  add_model(reglog_spec)
+
+reglog_model <- reglog_workflow %>%  fit(df_train)
+```
+
+## KNN
+
+
+```{r}
+df_recipe <- df_recipe %>%  
+  step_normalize(all_numeric_predictors()) 
+
+knn_spec <- nearest_neighbor(
+              mode = "classification",
+              neighbors = tune()  
+            ) %>%  
+            set_engine('kknn')
+
+knn_workflow <- workflow() %>% 
+  add_recipe(df_recipe) %>% 
+  add_model(knn_spec)
+
+knn_cv <- vfold_cv(df_train, v = 5)
+knn_grid <- grid_regular(neighbors(c(2, 17)), levels=15) 
+
+knn_tune <- tune_grid( 
+  knn_workflow,
+  resamples = knn_cv,
+  grid = knn_grid
+)
+
+lowest_auc <- knn_tune %>% 
+  select_best(metric = "roc_auc") 
+
+knn_last_workflow <- finalize_workflow(knn_workflow, lowest_auc)
+knn_model <- knn_last_workflow %>% 
+  fit(df_train)
+```
+
+## SVM
+
+```{r}
+svm_sepc <- svm_rbf(mode = "classification") %>% 
+  set_engine('kernlab')
+
+svm_workflow <- workflow() %>% 
+  add_recipe(df_recipe) %>% 
+  add_model(svm_sepc)
+svm_model <- svm_workflow %>%  fit(df_train)
+
+```
+
+## Random Forest
+
+```{r}
+rf_spec <- rand_forest(mode = "classification") %>% 
+  set_engine('ranger')
+rf_workflow <- workflow() %>% 
+  add_recipe(df_recipe) %>% 
+  add_model(rf_spec)
+rf_model <- rf_workflow %>%  fit(df_train)
+```
+
+
+## Resultados
+
+```{r}
+auto_metrics <- metric_set(accuracy, sens, spec) 
+models <- list("lda" = lda_model, "reglog" = reglog_model, 
+                "knn" = knn_model , "svm" = svm_model , "rf" = rf_model)
+ 
+results <- lapply(models, function(model) { 
+  model %>% 
+    augment(new_data = df_test) %>%  
+    auto_metrics(predictions, truth = alto_consumo, estimate = .pred_class) 
+})
+
+results <- list_rbind(results, names_to = "model") 
+
+results %>%  
+  select(-c(.estimator)) %>% 
+  pivot_wider(names_from = .metric, values_from = .estimate)  %>% kable()
+```
+
+## Conf Matrix
+
+```{r}
+mat_conf <- lapply(models, function(model) { 
+  model %>% 
+    augment(new_data = df_test) %>% 
+    count(alto_consumo, .pred_class) %>%  
+    mutate(.pred_class = factor(.pred_class,c(0,1))) 
+})
+
+mat_conf <- list_rbind(mat_conf, names_to = "model")
+
+mat_conf %>%  
+  ggplot(aes(x = alto_consumo, y = .pred_class)) +
+  geom_tile(aes(fill = n)) +
+  geom_text(aes(label = n), color = "white") +
+  labs(x = "Observado", y = "Predicho") +
+  theme(legend.position = "none") +
+  facet_wrap(~ model, ncol = 2) 
+```
+
+## ROC
+
+```{r}
+curves <- lapply(models, function(model) {
+  model %>% 
+    augment(new_data = df_test) %>% 
+    roc_curve(truth = alto_consumo, .pred_1) 
+})
+
+curves <- list_rbind(curves, names_to = "model")
+
+ggplot(curves, aes(x = 1 - specificity, y = sensitivity, color = model)) +
+  geom_path() +
+  coord_equal() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  labs(x = "1 - Specificity",
+       y = "Sensitivity",
+       color = "Modelo") 
+```
+
+
+# Tu turno
+```{r}
+data(Boston)
+df = Boston
+df <- df %>% mutate(crimen_alto = ifelse(crim > median(crim), 1, 0))  %>% mutate(crimen_alto = factor(crimen_alto, levels=c(1,0)))
+
+```
+
+
+```{r}
+df %>% 
+  select(-c(medv, lstat, rm)) %>%
+  pivot_longer(-crimen_alto, names_to = "var", values_to = "val") %>%
+  ggplot(aes(y = crimen_alto, x = val)) +
+  geom_boxplot(aes(fill = factor(crimen_alto))) +
+  facet_wrap(~var, scales = "free_x") +
+  theme(legend.position = "none")  +
+  xlab("valor de la variable")
+```
+
+
+```{r}
+set.seed(1234)
+df_split <- initial_split(df, prop = 3 / 4, strata = crimen_alto)
+df_train <- training(df_split)
+df_test <- testing(df_split)
+```
+
+## Recipe
+```{r}
+df_recipe <- recipe(
+  crimen_alto ~ .,
+  data = df_train)
+```
+
+## Naive Bayes
+
+```{r}
+df_recipe <- df_recipe %>%  
+  step_normalize(all_numeric_predictors())
+
+nb_spec <- naive_Bayes(mode = "classification") %>%  
+            set_engine('klaR')
+nb_workflow <- workflow() %>% 
+  add_recipe(df_recipe) %>% 
+  add_model(nb_spec)
+nb_model <- nb_workflow %>%  fit(df_train)
+```
+
+## QDA
+
+```{r}
+qda_spec <- discrim_quad(
+              mode = "classification") %>%  set_engine('MASS')
+
+qda_workflow <- workflow() %>% 
+  add_recipe(df_recipe) %>% 
+  add_model(qda_spec)
+
+qda_model <- qda_workflow %>% 
+  fit(df_train)
+```
+
+
+## Random Forest
+
+```{r}
+rf_spec <- rand_forest(mode = "classification") %>% 
+  set_engine('ranger')
+rf_workflow <- workflow() %>% 
+  add_recipe(df_recipe) %>% 
+  add_model(rf_spec)
+rf_model <- rf_workflow %>%  fit(df_train)
+```
+
+## Resultados
+
+```{r}
+auto_metrics <- metric_set(accuracy, sens, spec) 
+models <- list("qda" = qda_model, "nb" = nb_model , "randomForest" = rf_model)
+ 
+results <- lapply(models, function(model) { 
+  model %>% 
+    augment(new_data = df_test) %>%  
+    auto_metrics(predictions, truth = crimen_alto, estimate = .pred_class)
+})
+
+results <- list_rbind(results, names_to = "model") 
+
+results %>%  
+  select(-c(.estimator)) %>% 
+  pivot_wider(names_from = .metric, values_from = .estimate)  %>% kable()
+```
+
+## Conf Matrix
+
+```{r}
+mat_conf <- lapply(models, function(model) { 
+  model %>%   
+    augment(new_data = df_test) %>% 
+    count(crimen_alto, .pred_class) %>% 
+    mutate(.pred_class = factor(.pred_class,c(0,1))) 
+})
+
+mat_conf <- list_rbind(mat_conf, names_to = "model")
+
+mat_conf %>%  
+  ggplot(aes(x = crimen_alto, y = .pred_class)) +
+  geom_tile(aes(fill = n)) +
+  geom_text(aes(label = n), color = "white") +
+  labs(x = "Observado", y = "Predicho") +
+  theme(legend.position = "none") +
+  facet_wrap(~ model, ncol = 2) 
+```
+
+## ROC
+
+```{r}
+curves <- lapply(models, function(model) {
+  model %>% 
+    augment(new_data = df_test) %>% 
+    roc_curve(truth = crimen_alto, .pred_1) 
+})
+
+curves <- list_rbind(curves, names_to = "model")
+
+ggplot(curves, aes(x = 1 - specificity, y = sensitivity, color = model)) +
+  geom_path() +
+  coord_equal() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  labs(x = "1 - Specificity",
+       y = "Sensitivity",
+       color = "Modelo") 
+```
